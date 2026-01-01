@@ -77,16 +77,27 @@ This will:
 
 ### Build for Production
 
+For detailed build instructions including creating DMG/EXE installers, see [BUILD.md](BUILD.md).
+
+**Quick build:**
+
 ```bash
-# For Windows
-npm run build:win
+# macOS - Creates .dmg installer
+./build_standalone.sh
 
-# For macOS
-npm run build:mac
+# Windows - Creates .exe installer
+build_standalone.bat
 
-# For Linux
-npm run build:linux
+# Or use npm scripts
+npm run build:mac      # macOS
+npm run build:win      # Windows
+npm run build:linux    # Linux
 ```
+
+This will:
+1. Build Python backend into standalone executable with PyInstaller
+2. Build React frontend with Vite
+3. Package everything into a distributable app (.dmg, .exe, .AppImage)
 
 ## How It Works
 

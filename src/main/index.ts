@@ -41,15 +41,28 @@ function createWindow(): void {
 // Start Python backend
 function startPythonBackend(): void {
   // In dev mode: __dirname is /path/to/my-electron-vite-app/out/main
-  // Go up 2 levels (out/main -> out -> project root), then into backend
-  const backendPath = is.dev
-    ? join(__dirname, '../../backend/main.py')
-    : join(process.resourcesPath, 'backend/main.py')
+  // In production: __dirname is inside the .app bundle
 
-  console.log('Starting Python backend from:', backendPath)
+  let backendExecutable: string
+  let args: string[] = []
+
+  if (is.dev) {
+    // Development: Run Python script directly
+    backendExecutable = 'python3'
+    args = [join(__dirname, '../../backend/main.py')]
+  } else {
+    // Production: Run PyInstaller executable
+    const extension = process.platform === 'win32' ? '.exe' : ''
+    backendExecutable = join(process.resourcesPath, 'backend', `backend${extension}`)
+    args = [] // PyInstaller executable doesn't need arguments
+  }
+
+  console.log('Starting Python backend from:', backendExecutable)
+  console.log('Arguments:', args)
   console.log('__dirname:', __dirname)
+  console.log('process.resourcesPath:', process.resourcesPath)
 
-  pythonProcess = spawn('python3', [backendPath], {
+  pythonProcess = spawn(backendExecutable, args, {
     env: { ...process.env, PYTHONUNBUFFERED: '1' }
   })
 
