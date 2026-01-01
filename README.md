@@ -75,7 +75,7 @@ This will:
 - Build and launch the Electron app
 - Automatically spawn the Python backend on port 8000
 
-### Build for Production
+### Build for Production 
 
 For detailed build instructions including creating DMG/EXE installers, see [BUILD.md](BUILD.md).
 
@@ -499,6 +499,31 @@ interface User {
 - Check Python path: `which python3`
 - Verify dependencies: `pip3 list | grep fastapi`
 - Check logs in Electron dev tools console
+
+### npm install fails on Windows (SHA integrity errors)
+
+**Problem:** Getting SHA512 or integrity check errors when running `npm install` on Windows
+
+**Cause:** Git line ending conversion corrupts `package-lock.json`
+
+**Solution:**
+1. Delete corrupted files:
+   ```cmd
+   del package-lock.json
+   rmdir /s node_modules
+   ```
+
+2. Clear npm cache:
+   ```cmd
+   npm cache clean --force
+   ```
+
+3. Reinstall:
+   ```cmd
+   npm install
+   ```
+
+**Note:** This repo includes `.gitattributes` configuration to prevent this issue. If you cloned before this fix, you may need to pull the latest changes and follow the steps above.
 
 ### CSP errors
 - Add domains to `connect-src` in `src/renderer/index.html`

@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Prevent git from modifying package-lock.json (prevents SHA integrity errors on Windows)
+package-lock.json -text
