@@ -530,8 +530,19 @@ interface User {
 - For external APIs, add their domains too
 
 ### Port already in use
+
+**Note:** The app now automatically handles this! It will detect and kill processes using port 8000 on startup.
+
+If you need to manually kill the process:
+
+**Windows:**
+```cmd
+netstat -ano | findstr :8000
+taskkill //F //PID <PID>
+```
+
+**macOS/Linux:**
 ```bash
-# Kill process on port 8000
 lsof -ti:8000 | xargs kill -9
 ```
 

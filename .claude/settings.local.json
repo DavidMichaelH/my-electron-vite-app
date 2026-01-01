@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 3 cmd /c \"cd backend && python main.py\")",
+      "Bash(exit:*)",
+      "Bash(python:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)"
+    ]
+  }
+}
