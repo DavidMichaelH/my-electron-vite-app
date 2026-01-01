@@ -209,12 +209,85 @@ function startPythonBackendAttempt(attempt: number): Promise<void> {
   })
 }
 
-// Stop Python backend
-function stopPythonBackend(): void {
-  if (pythonProcess) {
-    pythonProcess.kill()
-    pythonProcess = null
+// Helper function to wait for process to exit
+function waitForProcessExit(process: any, timeout: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      resolve(false)
+    }, timeout)
+
+    process.once('exit', () => {
+      clearTimeout(timer)
+      resolve(true)
+    })
+  })
+}
+
+// Stop Python backend with graceful shutdown escalation
+async function stopPythonBackend(): Promise<void> {
+  if (!pythonProcess) {
+    return
   }
+
+  console.log('[Backend]: Initiating shutdown...')
+
+  // Step 1: Try graceful shutdown via HTTP endpoint (3 seconds timeout)
+  try {
+    console.log('[Backend]: Attempting graceful shutdown via /shutdown endpoint...')
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3000)
+
+    await fetch(`http://127.0.0.1:${BACKEND_PORT}/shutdown`, {
+      method: 'POST',
+      signal: controller.signal
+    })
+
+    clearTimeout(timeoutId)
+
+    // Wait for process to exit
+    const exited = await waitForProcessExit(pythonProcess, 2000)
+    if (exited) {
+      console.log('[Backend]: ✓ Gracefully shut down via HTTP')
+      pythonProcess = null
+      return
+    }
+  } catch (error) {
+    console.log('[Backend]: HTTP shutdown failed, escalating...')
+  }
+
+  // Step 2: Send SIGTERM for graceful shutdown (5 seconds timeout)
+  console.log('[Backend]: Sending SIGTERM...')
+  try {
+    pythonProcess.kill('SIGTERM')
+    const exited = await waitForProcessExit(pythonProcess, 5000)
+    if (exited) {
+      console.log('[Backend]: ✓ Shut down via SIGTERM')
+      pythonProcess = null
+      return
+    }
+  } catch (error) {
+    console.log('[Backend]: SIGTERM failed, escalating to force kill...')
+  }
+
+  // Step 3: Force kill the process and its children
+  console.log('[Backend]: Force killing process...')
+  try {
+    if (process.platform === 'win32') {
+      // Windows: Kill entire process tree
+      await execPromise(`taskkill /F /T /PID ${pythonProcess.pid}`)
+      console.log('[Backend]: ✓ Force killed process tree (Windows)')
+    } else {
+      // Unix: Send SIGKILL
+      pythonProcess.kill('SIGKILL')
+      await waitForProcessExit(pythonProcess, 2000)
+      console.log('[Backend]: ✓ Force killed process (Unix)')
+    }
+  } catch (error) {
+    console.error('[Backend]: Error during force kill:', error)
+  }
+
+  pythonProcess = null
+  console.log('[Backend]: Shutdown complete')
 }
 
 // This method will be called when Electron has finished
@@ -249,16 +322,20 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  stopPythonBackend()
+app.on('window-all-closed', async () => {
+  await stopPythonBackend()
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
 // Clean up when quitting
-app.on('quit', () => {
-  stopPythonBackend()
+app.on('before-quit', async (event) => {
+  if (pythonProcess) {
+    event.preventDefault()
+    await stopPythonBackend()
+    app.quit()
+  }
 })
 
 // In this file you can include the rest of your app's specific main process

@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import os
+import signal
 
 app = FastAPI()
 
@@ -37,6 +39,26 @@ def reset_counter():
     global counter
     counter = 0
     return {"counter": counter, "message": "Counter reset to 0"}
+
+@app.post("/shutdown")
+def shutdown():
+    """Gracefully shutdown the server
+
+    This endpoint allows the Electron app to request a clean shutdown
+    before forcefully killing the process.
+    """
+    def shutdown_server():
+        # Give time for response to be sent
+        import time
+        time.sleep(0.1)
+        # Exit cleanly
+        os._exit(0)
+
+    # Run shutdown in background to allow response to be sent
+    import threading
+    threading.Thread(target=shutdown_server, daemon=True).start()
+
+    return {"message": "Server shutting down"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
